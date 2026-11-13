@@ -26,6 +26,17 @@ data class CheckIn(
     val status: CheckInStatus
 )
 
+fun Window.startMinutes(): Int = when (this) {
+    Window.START -> 8 * 60
+    Window.MIDDLE -> 10 * 60
+    Window.END -> 11 * 60 + 30
+}
+
+fun StatusKind.toStatus(lateMinutes: Int): CheckInStatus = when (this) {
+    StatusKind.ON_TIME -> CheckInStatus.OnTime
+    StatusKind.LATE -> CheckInStatus.Late(lateMinutes)
+    StatusKind.ABSENT -> CheckInStatus.Absent
+}
 fun Student.initials() : String =
     name.split(" ")
         .filter { it.isNotBlank() }

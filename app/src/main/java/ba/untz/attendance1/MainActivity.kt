@@ -50,11 +50,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Slider
@@ -63,6 +66,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import kotlin.math.roundToInt
 
 class MainActivity : ComponentActivity() {
@@ -516,11 +520,115 @@ fun LateMinutesSliderDisabledPreview() {
     }
 }
 @Composable
+fun ManualCheckInForm(
+    window: Window,
+    existing: List<CheckIn>,
+    onSave: (CheckIn) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var index by rememberSaveable { mutableStateOf("") }
+    var name by rememberSaveable { mutableStateOf("") }
+    var statusKind by rememberSaveable { mutableStateOf(StatusKind.ON_TIME) }
+    var lateMinutes by rememberSaveable { mutableStateOf(5) }
+    var confirmed by rememberSaveable { mutableStateOf(false) }
+
+    val indexValid = Regex("IB\\d{3}").matches(index)
+    val nameValid = name.trim().contains(" ")
+    val formValid = indexValid && nameValid && confirmed
+
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = "Manual check-in · ${window.name.lowercase()}",
+            style = MaterialTheme.typography.titleMedium
+        )
+
+        OutlinedTextField(
+            value = index,
+            onValueChange = { index = it.uppercase() },
+            label = { Text("Index") },
+            isError = index.isNotEmpty() && !indexValid,
+            supportingText = { Text("Format: IB + 3 digits") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        OutlinedTextField(
+            value = name,
+            onValueChange = { name = it },
+            label = { Text("First and last name") },
+            isError = name.isNotEmpty() && !nameValid,
+            supportingText = { Text("e.g. Tarik Hodžić") },
+            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        StatusPicker(
+            selected = statusKind,
+            onSelect = { statusKind = it }
+        )
+
+        LateMinutesSlider(
+            minutes = lateMinutes,
+            onMinutesChange = { lateMinutes = it },
+            enabled = (statusKind == StatusKind.LATE)
+        )
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .toggleable(
+                    value = confirmed,
+                    onValueChange = { confirmed = it },
+                    role = Role.Checkbox
+                ),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Checkbox(
+                checked = confirmed,
+                onCheckedChange = null
+            )
+            Text(text = "Confirmed in person")
+        }
+
+        Button(
+            onClick = {
+                val mins = when (statusKind) {
+                    StatusKind.ON_TIME -> window.startMinutes()
+                    StatusKind.LATE -> window.startMinutes() + lateMinutes
+                    StatusKind.ABSENT -> 0
+                }
+                val newCheckIn = CheckIn(
+                    student = Student(id = index.trim(), name = name.trim()),
+                    window = window,
+                    minutes = mins,
+                    status = statusKind.toStatus(lateMinutes)
+                )
+                onSave(newCheckIn)
+
+                index = ""
+                name = ""
+                statusKind = StatusKind.ON_TIME
+                lateMinutes = 5
+                confirmed = false
+            },
+            enabled = formValid
+        ) {
+            Text("Add check-in")
+        }
+    }
+}
+@Composable
 fun ProfessorScreen(
     modifier: Modifier = Modifier
 ) {
     var openWindow by rememberSaveable { mutableStateOf<Window?>(null) }
-    var checkIns by remember { mutableStateOf(sampleCheckIns) }
+    //Sa rememberSaveable nakon rotacije ostaje dodana prijava dok pri koristenju
+    //remember prijava koju unesem je tu do okretanja ekrana nakon toga nestaje
+    var checkIns by remember{ mutableStateOf(sampleCheckIns) }
     val currentCheckIns = checkIns.filter { it.window == openWindow }
     var query by rememberSaveable { mutableStateOf("") }
     var onlyLate by rememberSaveable { mutableStateOf(false) }
@@ -542,7 +650,13 @@ fun ProfessorScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            //pisemo checkIns = checkIns + it jer Compose pravi ekran ponovo samo kad dobije novu listu,
+           //dok sacheckIns.add(it) ostaje ista lista pa Compose ne bi primijetio promjenu
+
+
             if (openWindow == null) {
+
+
 
             } else {
                 AttendanceSummary(
@@ -593,7 +707,13 @@ fun ProfessorScreen(
                     }
 
                 }
+                ManualCheckInForm(
+                    window = openWindow!!,
+                    existing = checkIns,
+                    onSave = { checkIns = checkIns + it }
+                )
             }
+
         }
     }
 }
