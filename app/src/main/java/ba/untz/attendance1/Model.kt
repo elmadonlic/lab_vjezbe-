@@ -7,6 +7,11 @@ enum class Window(val label: String){
     MIDDLE("middle"),
     END("end")
 }
+enum class StatusKind(val label: String) {
+    ON_TIME("On time"),
+    LATE("Late"),
+    ABSENT("Absent")
+}
 
 sealed interface CheckInStatus{
     data object OnTime: CheckInStatus

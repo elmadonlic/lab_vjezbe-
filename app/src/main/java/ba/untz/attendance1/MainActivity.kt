@@ -51,9 +51,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.getValue
@@ -419,6 +422,47 @@ fun LateOnlySwitchOffPreview() {
         LateOnlySwitch(
             onlyLate = false,
             onOnlyLateChange = {}
+        )
+    }
+}
+
+// Kad bi svako radio dugme u forEach imalo svoj lokalni var selected by remember {mutableStateOf(false)},
+// svako dugme bi pamtilo svoje stanje neovisno od ostalih,
+// pa to vise ne bi bila radio grupa vec bi se ponasalo kao vise checkboxova.
+@Composable
+fun StatusPicker(
+    selected: StatusKind,
+    onSelect: (StatusKind) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier.selectableGroup()) {
+        StatusKind.entries.forEach { kind ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .selectable(
+                        selected = (kind == selected),
+                        onClick = { onSelect(kind) },
+                        role = Role.RadioButton
+                    ),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                RadioButton(
+                    selected = (kind == selected),
+                    onClick = null
+                )
+                Text(text = kind.label)
+            }
+        }
+    }
+}
+@Preview(showBackground = true)
+@Composable
+fun StatusPickerPreview() {
+    Attendance1Theme {
+        StatusPicker(
+            selected = StatusKind.LATE,
+            onSelect = {}
         )
     }
 }
