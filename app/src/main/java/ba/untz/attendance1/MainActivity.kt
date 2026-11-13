@@ -51,11 +51,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.semantics.Role
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -373,6 +376,53 @@ fun SearchFieldPreview() {
     }
 }
 @Composable
+fun LateOnlySwitch(
+    onlyLate: Boolean,
+    onOnlyLateChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .toggleable(
+                value = onlyLate,
+                role = Role.Switch,
+                onValueChange = onOnlyLateChange
+            ),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = "Only late",
+            modifier = Modifier.weight(1f)
+        )
+        Switch(
+            checked = onlyLate,
+            onCheckedChange = null
+        )
+    }
+}
+@Preview(showBackground = true)
+@Composable
+fun LateOnlySwitchOnPreview() {
+    Attendance1Theme {
+        LateOnlySwitch(
+            onlyLate = true,
+            onOnlyLateChange = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun LateOnlySwitchOffPreview() {
+    Attendance1Theme {
+        LateOnlySwitch(
+            onlyLate = false,
+            onOnlyLateChange = {}
+        )
+    }
+}
+@Composable
 fun ProfessorScreen(
     modifier: Modifier = Modifier
 ) {
@@ -380,6 +430,7 @@ fun ProfessorScreen(
     var checkIns by remember { mutableStateOf(sampleCheckIns) }
     val currentCheckIns = checkIns.filter { it.window == openWindow }
     var query by rememberSaveable { mutableStateOf("") }
+    var onlyLate by rememberSaveable { mutableStateOf(false) }
 
     Surface(
         modifier = modifier.fillMaxSize(),
@@ -411,11 +462,24 @@ fun ProfessorScreen(
                     onQueryChange = { query = it }
                 )
 
+                LateOnlySwitch(
+                    onlyLate = onlyLate,
+                    onOnlyLateChange = { onlyLate = it }
+                )
+
                 Spacer(modifier = Modifier.height(16.dp))
 
-                val filteredCheckIns = currentCheckIns.filter {
-                    it.student.name.contains(query, ignoreCase = true)
-                }
+                // pretpostavka: ako u pretrazivac ukucam s pretpostavljam da ce mi ispisati samo dvije kartice Faris i Selma
+                // dok Hedija u svom prezimenu ne sadrzi s vec š s toga ne bi trebalo da se pojavi ta kartica
+
+
+                    val filteredCheckIns = currentCheckIns.filter {
+                        checkIn ->
+                        val matchesQuery = checkIn.student.name.contains(query, ignoreCase = true)
+                        val matchesLate = !onlyLate || checkIn.status is CheckInStatus.Late
+                        matchesQuery && matchesLate
+                    }
+
 
                 if (filteredCheckIns.isEmpty()) {
                     Text(
