@@ -52,6 +52,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -122,8 +123,6 @@ fun CheckInRow(
 
 
 
-
-
 @Preview(name = "On time", showBackground = true)
 @Composable
 fun CheckInCardOnTimePreview() {
@@ -140,7 +139,7 @@ fun CheckInCardLatePreview() {
     }
 }
 
-// 3. Preview za status "Absent" (Selma)
+
 @Preview(name = "Absent", showBackground = true)
 @Composable
 fun CheckInCardAbsentPreview() {
@@ -211,7 +210,7 @@ fun StatusBadge(
             .clip(MaterialTheme.shapes.small)
             .background(MaterialTheme.colorScheme.errorContainer)
             .padding(horizontal = 8.dp, vertical = 2.dp),
-        color = status.color(), // <- Ovdje primijenjena nova funkcija
+        color = status.color(),
         style = MaterialTheme.typography.labelMedium
     )
 }
@@ -234,7 +233,7 @@ fun CheckInStatus.color(): Color {
 fun CheckInRowPreview() {
     Attendance1Theme {
         Surface {
-            CheckInRow(checkIn = sampleCheckIns[1]) // Amir Imširović (Late)
+            CheckInRow(checkIn = sampleCheckIns[1])
         }
     }
 }
@@ -346,6 +345,33 @@ fun WindowControlsMiddlePreview() {
         )
     }
 }
+
+@Composable
+fun SearchField(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    OutlinedTextField(
+        value = query,
+        onValueChange = onQueryChange,
+        label = { Text("Search student") },
+        placeholder = { Text("e.g. Amir") },
+        singleLine = true,
+        modifier = modifier.fillMaxWidth()
+    )
+}
+
+@Preview(showBackground = true)
+@Composable
+fun SearchFieldPreview() {
+    Attendance1Theme {
+        SearchField(
+            query = "ami",
+            onQueryChange = {}
+        )
+    }
+}
 @Composable
 fun ProfessorScreen(
     modifier: Modifier = Modifier
@@ -353,6 +379,7 @@ fun ProfessorScreen(
     var openWindow by rememberSaveable { mutableStateOf<Window?>(null) }
     var checkIns by remember { mutableStateOf(sampleCheckIns) }
     val currentCheckIns = checkIns.filter { it.window == openWindow }
+    var query by rememberSaveable { mutableStateOf("") }
 
     Surface(
         modifier = modifier.fillMaxSize(),
@@ -378,17 +405,36 @@ fun ProfessorScreen(
                     checkIns = currentCheckIns
                 )
 
+                // kada pokusavam pisati unutar search-a na emulatoru nije moguce unijeti teskt dok je OnQueryChange prazan
+                SearchField(
+                    query = query,
+                    onQueryChange = { query = it }
+                )
+
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Column(
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    currentCheckIns.forEach { checkIn ->
-                        CheckInCard(
-                            checkIn = checkIn,
-                            allCheckIns = checkIns
-                        )
+                val filteredCheckIns = currentCheckIns.filter {
+                    it.student.name.contains(query, ignoreCase = true)
+                }
+
+                if (filteredCheckIns.isEmpty()) {
+                    Text(
+                        text = "No check-ins match the filter",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                } else {
+                    Column(
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        filteredCheckIns.forEach { checkIn ->
+                            CheckInCard(
+                                checkIn = checkIn,
+                                allCheckIns = checkIns
+                            )
+                        }
                     }
+
                 }
             }
         }
