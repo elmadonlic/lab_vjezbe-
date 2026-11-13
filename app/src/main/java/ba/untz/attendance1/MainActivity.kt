@@ -57,11 +57,13 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.semantics.Role
+import kotlin.math.roundToInt
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -463,6 +465,53 @@ fun StatusPickerPreview() {
         StatusPicker(
             selected = StatusKind.LATE,
             onSelect = {}
+        )
+    }
+}
+
+
+//Za korak od 5 min treba steps = 10 jer imamo 12 brojeva (5, 10, 15... 60), a steps broji samo izmedju pocetka i kraja.
+// AKo steps = 12 bilo bi 14 tackica pa korak ne bi bio po 5 minuta nego decimalan broj.
+@Composable
+fun LateMinutesSlider(
+    minutes: Int,
+    onMinutesChange: (Int) -> Unit,
+    enabled: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier) {
+        Text(
+            text = if (enabled) "Late: $minutes min" else "Late: -"
+        )
+        Slider(
+            value = minutes.toFloat(),
+            onValueChange = { onMinutesChange(it.roundToInt()) },
+            valueRange = 5f..60f,
+            steps = 10,
+            enabled = enabled
+        )
+    }
+}
+@Preview(showBackground = true)
+@Composable
+fun LateMinutesSliderEnabledPreview() {
+    Attendance1Theme {
+        LateMinutesSlider(
+            minutes = 15,
+            onMinutesChange = {},
+            enabled = true
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun LateMinutesSliderDisabledPreview() {
+    Attendance1Theme {
+        LateMinutesSlider(
+            minutes = 15,
+            onMinutesChange = {},
+            enabled = false
         )
     }
 }
