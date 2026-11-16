@@ -67,6 +67,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlin.math.roundToInt
 
 class MainActivity : ComponentActivity() {
@@ -621,20 +623,20 @@ fun ManualCheckInForm(
         }
     }
 }
+
+// Poslije rotacije ne ostaje nista (ni otvoreni prozor ni Tarikova prijava).
+// Ne mozemo jednostavno sve staviti u rememberSaveable jer on sluzi samo za male, jednostavne podatke  dok slozene klase  ne mogu se tako cuvati.
+//Sa rememberSaveable nakon rotacije ostaje dodana prijava dok pri koristenju
+//remember prijava koju unesem je tu do okretanja ekrana nakon toga nestaje
 @Composable
 fun ProfessorScreen(
+    state: LectureUiState,
+    onOpen: (Window?) -> Unit,
+    onQueryChange: (String) -> Unit,
+    onOnlyLateChange: (Boolean) -> Unit,
+    onSave: (CheckIn) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Poslije rotacije ne ostaje nista (ni otvoreni prozor ni Tarikova prijava).
-   // Ne mozemo jednostavno sve staviti u rememberSaveable jer on sluzi samo za male, jednostavne podatke  dok slozene klase  ne mogu se tako cuvati.
-    var openWindow by remember{ mutableStateOf<Window?>(null) }
-    //Sa rememberSaveable nakon rotacije ostaje dodana prijava dok pri koristenju
-    //remember prijava koju unesem je tu do okretanja ekrana nakon toga nestaje
-    var checkIns by remember{ mutableStateOf(sampleCheckIns) }
-    val currentCheckIns = checkIns.filter { it.window == openWindow }
-    var query by rememberSaveable { mutableStateOf("") }
-    var onlyLate by rememberSaveable { mutableStateOf(false) }
-
     Surface(
         modifier = modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
@@ -645,52 +647,46 @@ fun ProfessorScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp)
         ) {
+            Text(
+                text = "Lecture ${state.lecture.number} · ${state.lecture.title}",
+                style = MaterialTheme.typography.titleLarge
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
             WindowControls(
-                openWindow = openWindow,
-                onOpen = { openWindow = it }
+                openWindow = state.openWindow,
+                onOpen = onOpen
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
             //pisemo checkIns = checkIns + it jer Compose pravi ekran ponovo samo kad dobije novu listu,
-           //dok sacheckIns.add(it) ostaje ista lista pa Compose ne bi primijetio promjenu
+            //dok sa checkIns.add(it) ostaje ista lista pa Compose ne bi primijetio promjenu
 
-
-            if (openWindow == null) {
-
-
+            if (state.openWindow == null) {
 
             } else {
                 AttendanceSummary(
-                    checkIns = currentCheckIns
+                    checkIns = state.inWindow
                 )
 
                 // kada pokusavam pisati unutar search-a na emulatoru nije moguce unijeti teskt dok je OnQueryChange prazan
                 SearchField(
-                    query = query,
-                    onQueryChange = { query = it }
+                    query = state.query,
+                    onQueryChange = onQueryChange
                 )
 
                 LateOnlySwitch(
-                    onlyLate = onlyLate,
-                    onOnlyLateChange = { onlyLate = it }
+                    onlyLate = state.onlyLate,
+                    onOnlyLateChange = onOnlyLateChange
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // pretpostavka: ako u pretrazivac ukucam s pretpostavljam da ce mi ispisati samo dvije kartice Faris i Selma
                 // dok Hedija u svom prezimenu ne sadrzi s vec š s toga ne bi trebalo da se pojavi ta kartica
-
-
-                    val filteredCheckIns = currentCheckIns.filter {
-                        checkIn ->
-                        val matchesQuery = checkIn.student.name.contains(query, ignoreCase = true)
-                        val matchesLate = !onlyLate || checkIn.status is CheckInStatus.Late
-                        matchesQuery && matchesLate
-                    }
-
-
-                if (filteredCheckIns.isEmpty()) {
+                if (state.shown.isEmpty()) {
                     Text(
                         text = "No check-ins match the filter",
                         style = MaterialTheme.typography.bodyMedium,
@@ -700,22 +696,78 @@ fun ProfessorScreen(
                     Column(
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        filteredCheckIns.forEach { checkIn ->
+                        state.shown.forEach { checkIn ->
                             CheckInCard(
                                 checkIn = checkIn,
-                                allCheckIns = checkIns
+                                allCheckIns = state.checkIns
                             )
                         }
                     }
-
                 }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
                 ManualCheckInForm(
-                    window = openWindow!!,
-                    existing = checkIns,
-                    onSave = { checkIns = checkIns + it }
+                    window = state.openWindow,
+                    existing = state.checkIns,
+                    onSave = onSave
                 )
             }
-
         }
     }
+}
+
+
+//pretpostavka: nakon rotacije ostaje sve na ekranu  jer sve te podatke sada cuva LectureViewModel koji prezivljava rotaciju.
+// U Logcatu ce biti samo jedan red ne kreira se novi model vec se samo vraca isti ViewModel.
+
+
+@Composable
+fun ProfessorRoute(
+    lectureId: String,
+    modifier: Modifier = Modifier
+)
+{
+    val vm: LectureViewModel = viewModel { LectureViewModel(lectureId) }
+    val state by vm.uiState.collectAsStateWithLifecycle()
+
+    ProfessorScreen(
+        state = state,
+        onOpen = { vm.openWindow(it) },
+        onQueryChange = { vm.setQuery(it) },
+        onOnlyLateChange = { vm.setOnlyLate(it) },
+        onSave = { vm.addCheckIn(it) },
+        modifier = modifier
+    )
+}
+@Preview(showBackground = true)
+@Composable
+fun ProfessorScreenClosedPreview() {
+    ProfessorScreen(
+        state = LectureUiState(
+            lecture = sampleLectures.last(),
+            checkIns = sampleCheckIns
+        ),
+        onOpen = {},
+        onQueryChange = {},
+        onOnlyLateChange = {},
+        onSave = {}
+    )
+}
+
+@Preview(showBackground = true)
+@Composable
+fun ProfessorScreenMiddleOnlyLatePreview() {
+    ProfessorScreen(
+        state = LectureUiState(
+            lecture = sampleLectures.last(),
+            openWindow = Window.MIDDLE,
+            checkIns = sampleCheckIns,
+            onlyLate = true
+        ),
+        onOpen = {},
+        onQueryChange = {},
+        onOnlyLateChange = {},
+        onSave = {}
+    )
 }

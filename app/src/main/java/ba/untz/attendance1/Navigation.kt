@@ -40,7 +40,7 @@ fun AppNavigation(modifier: Modifier = Modifier) {
                 )
             }
             entry<LectureDetail> { key ->
-                ProfessorScreen()
+                ProfessorRoute(lectureId = key.lectureId)
             }
         }
     )
