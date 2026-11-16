@@ -74,6 +74,7 @@ import kotlin.math.roundToInt
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Log.d("Lab6", "Activity onCreate")
         enableEdgeToEdge()
         setContent {
             Attendance1Theme {
@@ -83,8 +84,56 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
-}
+    override fun onStart() {
+        super.onStart()
+        Log.d("Lab6", "Activity onStart")
+    }
 
+    override fun onResume() {
+        super.onResume()
+        Log.d("Lab6", "Activity onResume")
+    }
+
+    override fun onPause() {
+        super.onPause()
+        Log.d("Lab6", "Activity onPause")
+    }
+
+    override fun onStop() {
+        super.onStop()
+        Log.d("Lab6", "Activity onStop")
+    }
+    override fun onDestroy() {
+        super.onDestroy()
+        Log.d("Lab6", "Activity onDestroy")
+    }
+}
+/*
+Stanje                        | Gdje zivi                  | Home + povratak | Rotacija
+------------------------------|----------------------------|-----------------|---------
+otvoreni prozor, pretraga     | LectureViewModel           | ostaje          | ostaje
+Tarikova rucna prijava        | LectureViewModel           | ostaje          | ostaje
+nacrt forme (upisan index)    | rememberSaveable u formi   | ostaje          | ostaje
+otvorena kartica              | remember u kartici         | ostaje          | gubi se (resetuje se)
+*/
+
+/*
+prvi slucaj:
+predvidjanje i stvarni Logcat:
+Activity onPause -> Activity onStop -> (povratak) -> Activity onStart -> Activity onResume
+(Nema onDestroy ni onCreate, niti ViewModel created/cleared, jer aktivnost ostaje u memoriji.)
+
+drugi slucaj:
+Predvidjanje i stvarni Logcat:
+Activity onPause -> Activity onStop -> Activity onDestroy -> Activity onCreate -> Activity onStart -> Activity onResume
+(Nema ViewModel cleared ni novog ViewModel created, jer ViewModel prezivljava rotaciju.)
+
+treci slucaj:
+Predvidjanje i stvarni Logcat:
+- Prvi Back (povratak na listu): ViewModel cleared: RMAS-5 (Activity ostaje u onResume)
+- Drugi Back (izlaz iz aplikacije): Activity onPause -> Activity onStop -> Activity onDestroy
+
+ */
 @Composable
 fun CheckInRow(
     checkIn: CheckIn,
