@@ -76,7 +76,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             Attendance1Theme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    ProfessorScreen(modifier = Modifier.padding(innerPadding))
+                    AppNavigation(modifier = Modifier.padding(innerPadding))
                 }
             }
         }
@@ -625,7 +625,9 @@ fun ManualCheckInForm(
 fun ProfessorScreen(
     modifier: Modifier = Modifier
 ) {
-    var openWindow by rememberSaveable { mutableStateOf<Window?>(null) }
+    // Poslije rotacije ne ostaje nista (ni otvoreni prozor ni Tarikova prijava).
+   // Ne mozemo jednostavno sve staviti u rememberSaveable jer on sluzi samo za male, jednostavne podatke  dok slozene klase  ne mogu se tako cuvati.
+    var openWindow by remember{ mutableStateOf<Window?>(null) }
     //Sa rememberSaveable nakon rotacije ostaje dodana prijava dok pri koristenju
     //remember prijava koju unesem je tu do okretanja ekrana nakon toga nestaje
     var checkIns by remember{ mutableStateOf(sampleCheckIns) }
